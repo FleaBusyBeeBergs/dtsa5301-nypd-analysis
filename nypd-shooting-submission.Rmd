@@ -1,0 +1,308 @@
+---
+title: "nypd-shooting-submission"
+author: "FB"
+date: "2024-02-01"
+output:
+  html_document:
+    df_print: paged
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libraries}
+# In addition to the tidyverse package used in the class lecture, the packages required to reproduce this analysis include plotly, chron, and patchwork.
+
+library(tidyverse) # for manipulating and data
+library(lubridate) # for working with date series
+
+
+```
+
+
+``` {r read_data}
+
+# reference 1
+
+url <- 'https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD'
+
+nypd_df <- read_csv(url)
+```       
+
+# Introduction 
+
+This project was completed for DTAS5301 as part of the MS-DS programme at the University of Colorado, Boulder. This topic is a matter of public safety and should be of interest to not only those who live in New York City, but for policy makers, law enforcement agencies, social advocacy groups and so on.
+
+## Questions of interest
+In this analysis, I will be addressing the following questions:
+
+* What is going on?
+* Who is most affected?
+* Where do the incidents occur?
+* When do these incidents occur?
+* Why is this happening?
+
+The main focus of my analysis will be on when there incidents occur.
+
+# Data cleaning and exploratory analysis
+### What is going on?
+
+To determine what is going on, some exploratory analysis is required to see what is included in the data set.
+
+```{r view_data}
+
+head(nypd_df)
+```
+```{r summary_data}
+
+summary(nypd_df)
+```
+
+
+#### Notes
+The data set contains information about shooting incidents collected by the New York Police Department from, at time of writing, 2006 through 2022. Information contains dates, times, precints, jurisdictions, locations and their descriptions, perpetrator and victim demographics, and whether or not the victim survived(statistical murder flag). Some data cleaning is required.
+
+```{r view_loc_desc}
+
+head(nypd_df$LOCATION_DESC, 20)
+```
+
+```{r unique_loc_desc}
+
+unique(nypd_df$LOCATION_DESC)
+```
+#### Notes
+In the location description column, the NA values, '(null)', and 'NONE' need to be combined.
+
+```{r clean_loc_desc}
+# reference 2
+nypd_df$LOCATION_DESC <- ifelse(is.na(nypd_df$LOCATION_DESC) | nypd_df$LOCATION_DESC == "(null)", "NONE", nypd_df$LOCATION_DESC)
+```
+
+```{r loc_proportions}
+
+loc_proportions <- as.data.frame(prop.table(table(nypd_df$LOCATION_DESC)))
+  loc_proportions[order(loc_proportions$Freq, decreasing = TRUE), , drop = FALSE] 
+```
+
+There are a lot of different locations with only a tiny fraction of the population. Those can be combined into a single 'BUSINESS / OTHER' category for easier plotting.
+
+```{r combine_loc_desc}
+
+loc_list <- c('NONE', 'MULTI DWELL - PUBLIC HOUS', 'MULTI DWELL - APT BUILD', 'PVT HOUSE')
+
+nypd_df <- nypd_df %>% 
+  mutate(LOCATION_DESC = ifelse(LOCATION_DESC %in% loc_list, LOCATION_DESC, 'BUSINESS / OTHER'))
+```
+
+```{r view_boro_proportions}
+
+boro_proportions <- as.data.frame(prop.table(table(nypd_df$BORO)))
+boro_proportions[order(boro_proportions$Freq, decreasing = TRUE), , drop = FALSE]
+```
+Staten Island has a very small fraction (2.8%) of shooting incidents. For the sake of plotting, I will not use this subset in my analysis.
+
+```{r remove_staten_island}
+
+nypd_df <- subset(nypd_df, BORO != 'STATEN ISLAND')
+```
+
+
+```{r view_vic_age_group}
+age_group_proportions <- as.data.frame(prop.table(table(nypd_df$VIC_AGE_GROUP)))
+age_group_proportions[order(age_group_proportions$Freq, decreasing = TRUE), , drop = FALSE] 
+```
+In the age group column, 'UNKNOWN' and '1022' need to be removed.
+
+```{r remove_age_unknowns}
+
+nypd_df <- subset(nypd_df, !(VIC_AGE_GROUP %in% c('UNKNOWN', '1022')))
+```
+
+```{r view_vic_sex_proportions}
+
+sex_proportions <- as.data.frame(prop.table(table(nypd_df$VIC_SEX)))
+sex_proportions[order(sex_proportions$Freq, decreasing = TRUE), , drop = FALSE] 
+```
+
+In the victim sex column, unknown values of 'U' need to be removed. Note: the values contained in this column reflect how the data was collected and should not suggest, for example, that gender is binary.
+
+```{r remove_vic_sex_unknowns}
+
+nypd_df <- subset(nypd_df, VIC_SEX != 'U')
+```
+
+
+```{r view_vic_race_proportions}
+
+race_proportions <- as.data.frame(prop.table(table(nypd_df$VIC_RACE)))
+race_proportions[order(race_proportions$Freq, decreasing = TRUE), , drop = FALSE]
+```
+In the victim race column, 'UNKNOWN' values need to be removed. Note: the values contained in this column reflect how the data was collected and should not suggest, for example, that a person's ethnic identity can fit neatly into one of the specified categories.
+
+```{r remove_vic_race_unknowns}
+
+nypd_df <- subset(nypd_df, VIC_RACE != 'UNKNOWN')
+```
+
+# Visual analysis
+
+### Who is most affected?
+
+```{r fig_1_victim_demo}
+
+vic_demo_plot <- ggplot(nypd_df, aes(VIC_RACE, fill = VIC_AGE_GROUP)) +
+  geom_bar(stat = 'count', position = 'dodge') +
+  facet_wrap(~ VIC_SEX) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  xlab("Victim's recorded race") +
+  ylab('Count') +
+  labs(fill = 'Age Group') +
+  ggtitle("Fig 1: Victim's demographics")
+
+vic_demo_plot
+```
+
+In figure 1, it appears that people who are male, between the ages of 18 and 44, and Black are the most frequent victims of the shootings. 
+
+### Where do these incidents occur?
+
+```{r fig_2_loc_plot}
+
+loc_plot <- ggplot(nypd_df, aes(BORO, fill = VIC_AGE_GROUP)) +
+  geom_bar(stat = 'count', position = 'dodge') +
+  facet_grid(. ~ LOCATION_DESC) +
+  theme(plot.margin = margin(l = 0, r = 0, unit = "pt"),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        strip.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0)) +
+  xlab('Boro') +
+  ylab('Number of shootings') +
+  labs(fill = 'Age Group') +
+  ggtitle('Fig. 2: Locations of incidents, 2006 - 2022')
+
+loc_plot
+```
+
+Here in figure 2, it appears that these incidents most frequently occur in the Bronx and Brooklyn, and do not have a more specific location description.
+
+### When do these incidents occur?
+
+```{r date_series_data_type}
+nypd_df$OCCUR_DATE <- mdy(nypd_df$OCCUR_DATE)
+
+
+nypd_df$Year <- lubridate::year(nypd_df$OCCUR_DATE)
+nypd_df$Month <- lubridate::month(nypd_df$OCCUR_DATE, label = TRUE)
+nypd_df$DayOfWeek <- lubridate::wday(nypd_df$OCCUR_DATE, label = TRUE)
+```
+
+
+
+```{r Fig_3_yearly}
+
+year_plot <- ggplot(nypd_df, aes(x = Year)) +
+  geom_bar(stat = 'count', fill = 'darkred') +
+  labs(title = 'Fig 3: Yearly count of incidents, 2006 - 2022', x = 'Year', y = 'Number of Shootings')
+year_plot
+```
+
+In figure 3, it appears that the yearly rate of shooting incidents was somewhat stable from the years 2006 through 2011, decreases between 2011 and 2019, then spikes in 2020 and 2021 to rates similar to those of the 2006 to 2011 period.
+
+Now let's have a look at how many of these incidents occur each month.
+
+
+```{r fig_4_annual_trends}
+
+year_month_plot <- ggplot(nypd_df, aes(x = Month, colour = factor(Year), group = factor(Year))) +
+  geom_point(stat = 'count') +
+  geom_line(stat = 'count') +
+  labs(title = 'Figure 4: Interactive plot: Monthly incidents by year',
+       colour = 'Select year below',
+       y = 'Number of shootings')
+      
+  
+int_month <- ggplotly(year_month_plot) 
+         
+#month_plot
+int_month
+```
+
+In figure 4, there appears to be a fairly consistent seasonal pattern to the number of incidents. Incidents tend to be at the lowest during the month of February and peak around July through August.  
+
+# Modelling
+
+To make the creation of a model easier, I did some basic feature engineering of adding a column of 1's to the data set and aggregating the data by month, then created a linear model of a sinusoidal curve to reflect the seasonal 'wave' pattern.
+
+```{r feature_engineering}
+
+nypd_df$Month <- as.numeric(nypd_df$Month)
+nypd_df$COUNT <- 1
+```
+
+
+
+```{r agg_months}
+# Reference 3
+monthly_counts <- aggregate(COUNT ~ Month + Year, data = nypd_df, FUN = sum)
+
+monthly_counts$Sin_Month <- sin(2 * pi * monthly_counts$Month / 12)
+monthly_counts$Cos_Month <- cos(2 * pi * monthly_counts$Month / 12)
+
+model <- lm(COUNT ~ Sin_Month + Cos_Month, data = monthly_counts)
+
+summary(model)
+
+```
+#### Model interpretation
+
+* Multiple R-squared value: 38.5% of the variance in the count of incidents can be explained by the month of the year.
+* F-statistic = 63.09, meaning that the model as a whole is useful in predicting incident counts.
+
+```{r predict}
+
+monthly_counts$PRED_COUNT <- predict(model)
+```
+
+```{r fig_5_visual_model_pred}
+
+seasonal_plot <- ggplot(monthly_counts) +
+  geom_point(aes(x = Month, y = COUNT, colour = 'Actual'), alpha = 0.5) +
+  geom_point(aes(x = Month, y = PRED_COUNT, colour = 'Predicted'), size = 3) +
+  labs(x = 'Month', y = 'Number of shootings', 
+       title = 'Fig. 5: Observed vs. predicted counts of monthly incidents') +
+  scale_colour_manual(values = c('Actual' = 'darkred', 'Predicted' = 'blue'),
+                      labels = c('Actual', 'Predicted')) +
+       
+  theme_minimal()  
+
+seasonal_plot
+```
+
+# Discussion
+
+most frequently occur in the Bronx and Brooklyn, and do not have a more specific location description.
+
+shooting incidents was somewhat stable from the years 2006 through 2011, decreases between 2011 and 2019, then spikes in 2020 and 2021 to rates similar to those of the 2006 to 2011 period.
+
+people who are male, between the ages of 18 and 44, and Black are the most frequent victims of the shootings.
+
+Victim Race: There is no population demographic information provided in the dataset, concatenating such info to determine if any ethnic group is disproportionately affected is outside the scope of this assignment, but readers are strongly encouraged to consider the many other variables that could play a roll in the process leading up to these incidents. 
+
+Identifying patterns in the data would be a first step to take in reducing shooting incidents. 
+
+### Why do these incidents occur?
+
+I don't know why. There would be numerous variables that could lead up to a person being shot, and consulting with subject experts from neighbourhood community associations, social advocacy groups, health care practitioners, government administration and law enforcement would be needed to identify these factors.
+
+### Biases
+
+### Further study: 
+Hypothesis testing - did shootings increase dramatically over the Covid-19 pandemic lockdown periods? Was there a programme implemented to decrease the number of shooting incidents from 2011 onwards, and was it effective? 
+
+# References
+1. DTSA 5301 course material: Nearly all code and methods in this project come from course material, printouts, lecture videos, etc.
+2. ChatGPT: Not going to lie, I used AI to get some of my chunks of code working. I used this to edit my non-functioning code, to interpret error messages, to translate my ideas from my experience with Python/Pandas/Altair/SKLearn to R, and as a learning tool rather than a crutch. I know AI can spit out a lot of garbage and I did not 'copy & paste' anything blindly! 
+3. Modelling a sinusoidal curve: https://stats.stackexchange.com/questions/60500/how-to-find-a-good-fit-for-semi-sinusoidal-model-in-r
