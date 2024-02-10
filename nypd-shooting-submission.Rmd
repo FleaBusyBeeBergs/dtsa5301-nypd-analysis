@@ -3,6 +3,7 @@ title: "nypd-shooting-submission"
 author: "FB"
 date: "2024-02-01"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 always_allow_html: true
@@ -14,12 +15,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r libraries}
-# In addition to the tidyverse package used in the class lecture, the packages required to reproduce this analysis include plotly, chron, and patchwork.
 
 library(tidyverse) # for manipulating and data
 library(lubridate) # for working with date series
-
-
 ```
 
 
@@ -34,7 +32,7 @@ nypd_df <- read_csv(url)
 
 # Introduction 
 
-This project was completed for DTAS5301 as part of the MS-DS programme at the University of Colorado, Boulder. This topic is a matter of public safety and should be of interest to not only those who live in New York City, but for policy makers, law enforcement agencies, social advocacy groups and so on.
+This project was completed for DTAS5301 as part of the MS-DS programme at the University of Colorado, Boulder. This topic is a matter of public safety and should be of interest to not only those who live in New York City, but for policy makers, law enforcement agencies, social advocacy groups, and community associations in other cities as well. Efforts to reduce gun violence would first begin with identifying patterns in the data, so that resources can be most efficiently allocated to make the largest impact for those most affected.
 
 ## Questions of interest
 In this analysis, I will be addressing the following questions:
@@ -48,6 +46,7 @@ In this analysis, I will be addressing the following questions:
 The main focus of my analysis will be on when there incidents occur.
 
 # Data cleaning and exploratory analysis
+
 ### What is going on?
 
 To determine what is going on, some exploratory analysis is required to see what is included in the data set.
@@ -78,6 +77,7 @@ unique(nypd_df$LOCATION_DESC)
 In the location description column, the NA values, '(null)', and 'NONE' need to be combined.
 
 ```{r clean_loc_desc}
+
 # reference 2
 nypd_df$LOCATION_DESC <- ifelse(is.na(nypd_df$LOCATION_DESC) | nypd_df$LOCATION_DESC == "(null)", "NONE", nypd_df$LOCATION_DESC)
 ```
@@ -112,6 +112,7 @@ nypd_df <- subset(nypd_df, BORO != 'STATEN ISLAND')
 
 
 ```{r view_vic_age_group}
+
 age_group_proportions <- as.data.frame(prop.table(table(nypd_df$VIC_AGE_GROUP)))
 age_group_proportions[order(age_group_proportions$Freq, decreasing = TRUE), , drop = FALSE] 
 ```
@@ -159,7 +160,7 @@ vic_demo_plot <- ggplot(nypd_df, aes(VIC_RACE, fill = VIC_AGE_GROUP)) +
   facet_wrap(~ VIC_SEX) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
   xlab("Victim's recorded race") +
-  ylab('Count') +
+  ylab('Number of shootings') +
   labs(fill = 'Age Group') +
   ggtitle("Fig 1: Victim's demographics")
 
@@ -181,7 +182,7 @@ loc_plot <- ggplot(nypd_df, aes(BORO, fill = VIC_AGE_GROUP)) +
   xlab('Boro') +
   ylab('Number of shootings') +
   labs(fill = 'Age Group') +
-  ggtitle('Fig. 2: Locations of incidents, 2006 - 2022')
+  ggtitle('Fig. 2: Locations of incidents')
 
 loc_plot
 ```
@@ -191,21 +192,22 @@ Here in figure 2, it appears that these incidents most frequently occur in the B
 ### When do these incidents occur?
 
 ```{r date_series_data_type}
+
+# transform data type
 nypd_df$OCCUR_DATE <- mdy(nypd_df$OCCUR_DATE)
 
-
+# create columns for year/month/day
 nypd_df$Year <- lubridate::year(nypd_df$OCCUR_DATE)
 nypd_df$Month <- lubridate::month(nypd_df$OCCUR_DATE, label = TRUE)
 nypd_df$DayOfWeek <- lubridate::wday(nypd_df$OCCUR_DATE, label = TRUE)
 ```
-
-
 
 ```{r Fig_3_yearly}
 
 year_plot <- ggplot(nypd_df, aes(x = Year)) +
   geom_bar(stat = 'count', fill = 'darkred') +
   labs(title = 'Fig 3: Yearly count of incidents, 2006 - 2022', x = 'Year', y = 'Number of Shootings')
+
 year_plot
 ```
 
@@ -219,15 +221,11 @@ Now let's have a look at how many of these incidents occur each month.
 year_month_plot <- ggplot(nypd_df, aes(x = Month, colour = factor(Year), group = factor(Year))) +
   geom_point(stat = 'count') +
   geom_line(stat = 'count') +
-  labs(title = 'Figure 4: Interactive plot: Monthly incidents by year',
-       colour = 'Select year below',
+  labs(title = 'Figure 4: Monthly incidents by year',
+       colour = 'Year',
        y = 'Number of shootings')
       
-  
-int_month <- ggplotly(year_month_plot) 
-         
-#month_plot
-int_month
+year_month_plot
 ```
 
 In figure 4, there appears to be a fairly consistent seasonal pattern to the number of incidents. Incidents tend to be at the lowest during the month of February and peak around July through August.  
@@ -243,8 +241,8 @@ nypd_df$COUNT <- 1
 ```
 
 
-
 ```{r agg_months}
+
 # Reference 3
 monthly_counts <- aggregate(COUNT ~ Month + Year, data = nypd_df, FUN = sum)
 
@@ -254,8 +252,8 @@ monthly_counts$Cos_Month <- cos(2 * pi * monthly_counts$Month / 12)
 model <- lm(COUNT ~ Sin_Month + Cos_Month, data = monthly_counts)
 
 summary(model)
-
 ```
+
 #### Model interpretation
 
 * Multiple R-squared value: 38.5% of the variance in the count of incidents can be explained by the month of the year.
@@ -283,26 +281,34 @@ seasonal_plot
 
 # Discussion
 
-most frequently occur in the Bronx and Brooklyn, and do not have a more specific location description.
+In my analysis I have discovered that the neighbourhoods with the highest rate of shooting incidents are the Bronx and Brooklyn, and do not have a more specific location description. The people who are the most frequent victims of shooting incidents are those who are male, are in the age groups of 18-24 and 25-44, and are Black.
 
-shooting incidents was somewhat stable from the years 2006 through 2011, decreases between 2011 and 2019, then spikes in 2020 and 2021 to rates similar to those of the 2006 to 2011 period.
+I decided to mainly focus on the analysis of the times and dates that these incidents occur. Taking a look at the year-to-year data in figure 3, the number of shooting incidents was somewhat stable from the years 2006 through 2011, decreases between 2011 and 2019, then rises in 2020 and 2021 to rates similar to those in the 2006 to 2011 period. 
 
-people who are male, between the ages of 18 and 44, and Black are the most frequent victims of the shootings.
+When looking at figure 4, I can see that there is a trend that seems similar to a seasonal average temperature in New York (4). The number of shootings are highest in the summer months of July and August, and lowest in the winter months of January and February.
 
-Victim Race: There is no population demographic information provided in the dataset, concatenating such info to determine if any ethnic group is disproportionately affected is outside the scope of this assignment, but readers are strongly encouraged to consider the many other variables that could play a roll in the process leading up to these incidents. 
+### Why do these incidents occur where, when, and to whom they do?
 
-Identifying patterns in the data would be a first step to take in reducing shooting incidents. 
+I don't know why. There would be numerous variables that could lead up to a person being shot, and consulting with subject experts from neighbourhood community associations, social advocacy groups, health care practitioners, sociologists, government administration and law enforcement would be needed in order to identify these factors. More demographic, educational and economic data would also be required. 
 
-### Why do these incidents occur?
+I am not American, but have grown up consuming American media. If I were to offer a very biased opinion solely based on what I have seen in that media, I might say that the people who are often the most marginalized and economically vulnerable are those that are forced (in order to survive) to engage in questionable dealings with questionable people that may get themselves shot, and America has a history of marginalizing people who are Black; maybe some of these people who were the victims of shootings were even shot by police because they were Black (5). As it happens, the neighbourhoods of the Bronx and Brooklyn, where these incidents most frequently occur, are listed among the most disadvantaged communities (6). Perhaps there may be some merit to my opinion, but further study would be required to determine its statistical significance. 
 
-I don't know why. There would be numerous variables that could lead up to a person being shot, and consulting with subject experts from neighbourhood community associations, social advocacy groups, health care practitioners, government administration and law enforcement would be needed to identify these factors.
+The seasonal pattern in the data was quite interesting to me. My (unfounded) opinion is that maybe people like to keep warm (and safe) inside their own homes in the colder months, and spend more time outside in the warmer summer months where they are more exposed to receiving a gunshot wound. It is also possible that both the number of shootings and the seasonal temperatures are caused by a third unknown factor, and that weather itself does not affect the number of incidents.
 
-### Biases
+### Further study:
 
-### Further study: 
-Hypothesis testing - did shootings increase dramatically over the Covid-19 pandemic lockdown periods? Was there a programme implemented to decrease the number of shooting incidents from 2011 onwards, and was it effective? 
+My analysis led me to consider some more questions:
+
+* Was there a programme implemented to decrease the number of shooting incidents from 2011 onwards? Shooting incidents decreased from 2011 to 2017 and then remain at this relatively low level until May through September 2020 when incidents spiked to the highest levels within the data set. I feel that Covid-19 lock-downs may have been a factor in this spike, but again, consulting with subject experts and more data would be required.
+* I had created a heatmap to show which hours of the week where the most shootings occured, but decided to cut it for brevity and because it required the installation of additional packages, which may cause issues during peer-review. According to the heatmap I created, shootings peaked on late Friday nights/Saturday mornings, and late Saturday night/Sunday Mornings. Given more time, I would have liked to use that heatmap and then do some feature engineering so that I could feed some hourly variables into a machine learning model (see next point).
+* To further investigate this issue and improve the model I created, it would be interesting to use some machine learning to create another model where the number of shootings is a function of the average daily temperature, the date and time, the economic status of the neighbourhood in which the incident occurred, and the victim demographics. 
 
 # References
 1. DTSA 5301 course material: Nearly all code and methods in this project come from course material, printouts, lecture videos, etc.
 2. ChatGPT: Not going to lie, I used AI to get some of my chunks of code working. I used this to edit my non-functioning code, to interpret error messages, to translate my ideas from my experience with Python/Pandas/Altair/SKLearn to R, and as a learning tool rather than a crutch. I know AI can spit out a lot of garbage and I did not 'copy & paste' anything blindly! 
 3. Modelling a sinusoidal curve: https://stats.stackexchange.com/questions/60500/how-to-find-a-good-fit-for-semi-sinusoidal-model-in-r
+4. Average temperature by month in New York:
+https://en.climate-data.org/north-america/united-states-of-america/new-york/new-york-1091/
+5. My own (theoretical) biased opinion.
+6. New York Final Disadvantaged Communities:
+https://data.ny.gov/Energy-Environment/Final-Disadvantaged-Communities-DAC-2023-Map/6mn4-5vvz
