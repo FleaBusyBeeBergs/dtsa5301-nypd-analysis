@@ -32,7 +32,9 @@ nypd_df <- read_csv(url)
 
 # Introduction 
 
-This project was completed for DTAS5301 as part of the MS-DS programme at the University of Colorado, Boulder. This topic is a matter of public safety and should be of interest to not only those who live in New York City, but for policy makers, law enforcement agencies, social advocacy groups, and community associations in other cities as well. Efforts to reduce gun violence would first begin with identifying patterns in the data, so that resources can be most efficiently allocated to make the largest impact for those most affected.
+This project was completed for DTSA5301 as part of the MS-DS programme at the University of Colorado, Boulder. The data set was acquired from the url in the code chunk above, and is available for use under the terms and conditions found here: https://www.nyc.gov/home/terms-of-use.page
+
+This topic is a matter of public safety and should be of interest to not only those who live in New York City, but for policy makers, law enforcement agencies, social advocacy groups, and community associations in other cities as well. Efforts to reduce gun violence would first begin with identifying patterns in the data, so that resources can be most efficiently allocated to make the largest impact for those most affected.
 
 ## Questions of interest
 In this analysis, I will be addressing the following questions:
