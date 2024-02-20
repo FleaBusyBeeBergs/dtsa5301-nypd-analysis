@@ -120,7 +120,7 @@ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
 xlab("Victim's recorded race") +
 ylab('Number of shootings') +
 labs(fill = 'Age Group') +
-ggtitle("Fig 1: Victim's demographics")
+ggtitle("Victim's demographics")
 ```
 
 ```{r vic_demographics}
@@ -149,7 +149,7 @@ loc_plot <- ggplot(nypd_df, aes(BORO, fill = VIC_AGE_GROUP)) +
   xlab('Boro') +
   ylab('Count') +
   labs(fill = 'Age Group') +
-  ggtitle('Locations of New York City shooting incidents, 2006 - 2022')
+  ggtitle('Locations of New York City shooting incidents')
 ```
 
 ```{r locations}
@@ -195,17 +195,12 @@ Trends over the years:
 * 2006 to 2011 - steady 
 
 * 2011 to 2019 - decreasing
-
-  * Was there a programme implemented to reduce gun violence?
+  
 
 * 2020 to 2021 - large increase
-
-  * Were there prevention programmes that stopped during this time?
-  * Around the same time as Covid-19 lockdowns - coincidence?
+  
 
 * 2022 onwards - another decrease?
-
-  * Time will tell
   
 ## When do these incidents occur?
 
@@ -214,8 +209,8 @@ Trends over the years:
 year_month_plot <- ggplot(nypd_df, aes(x = Month, colour = factor(Year), group = factor(Year))) +
   geom_point(stat = 'count') +
   geom_line(stat = 'count') +
-  labs(title = 'Interactive plot: Monthly NYC shooting incidents by year',
-       colour = 'Select year below',
+  labs(title = 'Monthly NYC shooting incidents by year',
+       colour = 'Year',
        y = 'Number of shootings')
 ```         
 
@@ -232,7 +227,6 @@ Seasonal trend:
 
 * Lower number in the winter months
 
-* Weekly and daily counts vs. temperature data?
 
 ## When do these incidents occur?
 
@@ -283,7 +277,7 @@ Number of incidents as a function of the month of the year [1]:
 
 * January = 1, Jul = 7, etc.
 
-* shootings = -30.2 * (2 * pi * month)  -  33.4 * (2 * pi * month) + 129.5
+* shootings = -30.2 * sin * (2 * pi * month)  -  33.4 * cos (2 * pi * month) + 129.5
 
 * Adjusted R-squared = 0.3795
 
@@ -324,19 +318,17 @@ Not a bad fit!
 
 ## Why is this happening?
 
-Things to consider:
+Things to consider that are in the dataset:
 
-* Neighbourhood demographics
+Most of the shootings do not have a specific location listed and occur very late at night on the weekends.
 
-* Population density
+  * This could be an indication of participation in illegal activities. 
 
-* Biases in the data
-
-More information is needed!
+We cannot know for sure. More information is needed!
 
 ## Why is this happening?
 
-* Possible causes
+Possible causes - I don't know, but raises more questions:
 
   * Marginalized persons?
 
@@ -357,9 +349,9 @@ Consult those with knowledge:
 
 * Educators
 
-* Sociologists
+* Sociologists and criminologists
 
-* Government administration and law enforcement
+* Government and law enforcement
 
 ## What to do? Further study:
 
